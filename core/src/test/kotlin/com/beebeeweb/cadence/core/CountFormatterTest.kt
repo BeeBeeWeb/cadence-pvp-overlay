@@ -32,9 +32,9 @@ class CountFormatterTest {
         assertEquals(
             listOf(
                 "Bubble (+11 / 3t)",
-                "Fixture 40(40)   4x  12t",
-                "Ice Beam(55)     5x  15t",
-                "Fixture 60(60)   6x  18t",
+                "Fixture 40(40)    4x  12t",
+                "Ice Beam(55)      5x  15t",
+                "Fixture 60(60)  6>5x  18t",
             ),
             lines.map { it.text },
         )
@@ -43,7 +43,7 @@ class CountFormatterTest {
     @Test
     fun `only the fast move count is highlighted`() {
         val rows = CountFormatter.lines(sections).drop(1)
-        assertEquals(listOf("4x", "5x", "6x"), rows.map { it.highlighted() })
+        assertEquals(listOf("4x", "5x", "6>5x"), rows.map { it.highlighted() })
     }
 
     @Test
@@ -76,5 +76,13 @@ class CountFormatterTest {
     @Test
     fun `no sections gives no lines`() {
         assertEquals(emptyList<FormattedLine>(), CountFormatter.lines(emptyList()))
+    }
+
+    @Test
+    fun `leftover energy shows as first and repeat count`() {
+        val moveset = Moveset(FastMove("F", "Fast", 8, 3), listOf(ChargedMove("C", "Charged", 35), ChargedMove("D", "Other", 40)))
+        val lines = CountFormatter.lines(CountCalculator.sectionsFor(listOf(CountCalculator.countsFor(moveset))))
+        assertEquals("Charged(35)  5>4x  15t", lines[1].text.let { if (it.startsWith("Other")) lines[2].text else it })
+        assertEquals("5>4x", lines.first { it.text.startsWith("Charged") }.let { it.text.substring(it.highlight!!.first, it.highlight!!.last + 1) })
     }
 }

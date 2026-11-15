@@ -52,6 +52,8 @@ data class MoveCount(
     val move: ChargedMove,
     val fastMoves: Int,
     val turns: Int,
+    /** Fast moves needed for the next throw of the same move, counting energy left over from this one. */
+    val repeatFastMoves: Int = fastMoves,
 )
 
 /** All charged-move counts for one moveset, fastest to reach first. */

@@ -3,15 +3,18 @@ package com.beebeeweb.cadence.core
 /**
  * Move-count maths.
  *
- * Counts assume the Pokémon starts at zero energy. Energy left over after a charged move
- * is not tracked yet.
+ * Counts assume the Pokémon starts at zero energy. [MoveCount.repeatFastMoves] also counts the
+ * energy left over after throwing the same move once.
  */
 object CountCalculator {
 
     /** Fast moves needed to afford [charged], and the turns those fast moves take. */
     fun count(fast: FastMove, charged: ChargedMove): MoveCount {
         val fastMoves = (charged.energyCost + fast.energyGain - 1) / fast.energyGain // round up
-        return MoveCount(charged, fastMoves, fastMoves * fast.turns)
+        // Energy left after the first throw gives a head start on the next one.
+        val leftover = fastMoves * fast.energyGain - charged.energyCost
+        val repeat = (charged.energyCost - leftover + fast.energyGain - 1) / fast.energyGain
+        return MoveCount(charged, fastMoves, fastMoves * fast.turns, repeat)
     }
 
     /** Counts for every charged move in [moveset], quickest to reach first (ties keep input order). */

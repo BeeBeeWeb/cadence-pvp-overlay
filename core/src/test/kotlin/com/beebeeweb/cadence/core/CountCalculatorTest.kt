@@ -92,4 +92,21 @@ class CountCalculatorTest {
     fun `no movesets give no sections`() {
         assertEquals(emptyList<FastMoveSection>(), CountCalculator.sectionsFor(emptyList()))
     }
+
+    @Test
+    fun `repeat count uses leftover energy`() {
+        // 8 energy per move, 35 to throw: 5 moves (40 energy) leave 5, so the next throw needs only 4.
+        val fast = FastMove("F", "Fast", 8, 3)
+        val charged = ChargedMove("C", "Charged", 35)
+        val count = CountCalculator.count(fast, charged)
+        assertEquals(5, count.fastMoves)
+        assertEquals(4, count.repeatFastMoves)
+    }
+
+    @Test
+    fun `repeat count equals first count when nothing is left over`() {
+        val count = CountCalculator.count(FastMove("F", "Fast", 5, 2), ChargedMove("C", "Charged", 35))
+        assertEquals(7, count.fastMoves)
+        assertEquals(7, count.repeatFastMoves)
+    }
 }
