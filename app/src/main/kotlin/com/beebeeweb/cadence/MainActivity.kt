@@ -63,6 +63,7 @@ class MainActivity : ComponentActivity() {
         root.addView(button("1. Allow display over other apps") {
             startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
         })
+        root.addView(button("Your team") { startActivity(Intent(this, TeamActivity::class.java)) })
         root.addView(button("2. Start Cadence") { start() })
         root.addView(button("Stop") {
             startService(Intent(this, OverlayService::class.java).setAction(OverlayService.ACTION_STOP))

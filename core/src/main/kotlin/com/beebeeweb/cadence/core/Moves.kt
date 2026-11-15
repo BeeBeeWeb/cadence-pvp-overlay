@@ -65,3 +65,9 @@ data class FastMoveSection(
     val fast: FastMove,
     val counts: List<MoveCount>,
 )
+
+/** Every move in the data file, for pickers. */
+data class MoveCatalog(
+    val fast: List<FastMove>,
+    val charged: List<ChargedMove>,
+)

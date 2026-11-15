@@ -29,6 +29,13 @@ class MovesetDataTest {
     """.trimIndent()
 
     @Test
+    fun catalogListsEveryMoveSortedByName() {
+        val catalog = MovesetData.parseCatalog(fixture)
+        assertEquals(listOf("Bubble"), catalog.fast.map { it.name })
+        assertEquals(listOf("Fixture 60", "Ice Beam"), catalog.charged.map { it.name })
+    }
+
+    @Test
     fun `parses species, aliases and movesets`() {
         val species = MovesetData.parse(fixture)
         assertEquals(listOf("Azumarill", "Alolan Marowak"), species.map { it.name })

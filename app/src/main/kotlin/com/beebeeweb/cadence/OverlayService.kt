@@ -245,7 +245,7 @@ class OverlayService : Service() {
         private const val TAG = "CadenceService"
         private const val CHANNEL_ID = "cadence_capture"
         private const val NOTIFICATION_ID = 1
-        private const val DATA_ASSET = "greatleague.json"
+        const val DATA_ASSET = "greatleague.json"
 
         /** Fraction of the real screen size to capture. Lower is lighter, higher reads small text better. */
         private const val CAPTURE_SCALE = 0.75f

@@ -16,19 +16,19 @@ object MovesetData {
 
     const val SUPPORTED_VERSION = 1
 
-    fun parse(json: String): List<Species> {
-        val root = Json.parseToJsonElement(json).jsonObject
-        val version = root.getValue("version").jsonPrimitive.int
-        require(version == SUPPORTED_VERSION) { "Unsupported data version $version (expected $SUPPORTED_VERSION)" }
+    /** Every fast and charged move in the file, sorted by name (for pickers). */
+    fun parseCatalog(json: String): MoveCatalog {
+        val root = readRoot(json)
+        return MoveCatalog(
+            fast = fastMoves(root).values.sortedBy { it.name },
+            charged = chargedMoves(root).values.sortedBy { it.name },
+        )
+    }
 
-        val fastMoves = root.getValue("fastMoves").jsonObject.mapValues { (id, element) ->
-            val o = element.jsonObject
-            FastMove(id, o.text("name"), o.number("gain"), o.number("turns"))
-        }
-        val chargedMoves = root.getValue("chargedMoves").jsonObject.mapValues { (id, element) ->
-            val o = element.jsonObject
-            ChargedMove(id, o.text("name"), o.number("cost"))
-        }
+    fun parse(json: String): List<Species> {
+        val root = readRoot(json)
+        val fastMoves = fastMoves(root)
+        val chargedMoves = chargedMoves(root)
 
         return root.getValue("species").jsonArray.map { element ->
             val s = element.jsonObject
@@ -51,6 +51,25 @@ object MovesetData {
             )
         }
     }
+
+    private fun readRoot(json: String): JsonObject {
+        val root = Json.parseToJsonElement(json).jsonObject
+        val version = root.getValue("version").jsonPrimitive.int
+        require(version == SUPPORTED_VERSION) { "Unsupported data version $version (expected $SUPPORTED_VERSION)" }
+        return root
+    }
+
+    private fun fastMoves(root: JsonObject): Map<String, FastMove> =
+        root.getValue("fastMoves").jsonObject.mapValues { (id, element) ->
+            val o = element.jsonObject
+            FastMove(id, o.text("name"), o.number("gain"), o.number("turns"))
+        }
+
+    private fun chargedMoves(root: JsonObject): Map<String, ChargedMove> =
+        root.getValue("chargedMoves").jsonObject.mapValues { (id, element) ->
+            val o = element.jsonObject
+            ChargedMove(id, o.text("name"), o.number("cost"))
+        }
 
     private fun JsonObject.text(key: String): String = getValue(key).jsonPrimitive.content
 
