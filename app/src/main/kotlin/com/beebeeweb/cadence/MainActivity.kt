@@ -29,7 +29,7 @@ class MainActivity : ComponentActivity() {
                     .putExtra(OverlayService.EXTRA_RESULT_CODE, result.resultCode)
                     .putExtra(OverlayService.EXTRA_RESULT_DATA, data)
                 startForegroundService(intent)
-                status.text = "Cadence is running. Switch to the game and start a battle."
+                status.text = "Cadence is running, paused. Open the game and tap the floating Start button when the battle begins."
             } else {
                 status.text = "Screen capture was not allowed, so Cadence can't read the battle."
             }
@@ -53,7 +53,8 @@ class MainActivity : ComponentActivity() {
         })
         root.addView(TextView(this).apply {
             text = "Shows how many fast moves, and how many turns, the opponent needs to reach each " +
-                "charged move. Great League. Reads your screen only; it never taps for you."
+                "charged move. Great League. Reads your screen only; it never taps for you. " +
+                "A floating Start/Pause button appears over the game: tap it when a battle begins."
             setPadding(0, pad / 2, 0, pad)
         })
         status = TextView(this).apply { setPadding(0, 0, 0, pad) }

@@ -59,3 +59,9 @@ data class MovesetCounts(
     val fast: FastMove,
     val counts: List<MoveCount>,
 )
+
+/** One fast move with every charged move it was seen with across several movesets, quickest first. */
+data class FastMoveSection(
+    val fast: FastMove,
+    val counts: List<MoveCount>,
+)

@@ -42,8 +42,11 @@ species name when that is unambiguous.
 2. In Cadence: allow "display over other apps", then tap "Start Cadence".
 3. When Android asks what to share, choose "Entire screen". Switch to the game and start a battle.
 
-The panel appears under the opponent's card once the name has been read twice in a row. It never takes
-touches, so the game stays fully usable. Stop it from the app or from the notification.
+Cadence starts paused. A floating button appears over the game: tap **Start** when a battle begins and
+**Pause** when you are done (drag it to move it). While running, the panel appears under the opponent's
+card once the name has been read twice in a row. It lists each fast move once, followed by the charged
+moves with the fast-move count (red) and turns (white). The panel never takes touches, so the game stays
+fully usable. Stop Cadence completely from the app or from the notification.
 
 If the name is not recognised, the card region in `ScreenRegions.kt` and the capture scale in
 `OverlayService.kt` (`CAPTURE_SCALE`) are the first things to tune.

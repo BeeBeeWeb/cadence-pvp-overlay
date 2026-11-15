@@ -77,4 +77,15 @@ class NameStabilizerTest {
         assertThrows(IllegalArgumentException::class.java) { NameStabilizer(hitsToConfirm = 0) }
         assertThrows(IllegalArgumentException::class.java) { NameStabilizer(missesToClear = 0) }
     }
+
+    @Test
+    fun `reset forgets the current species and any progress`() {
+        val s = NameStabilizer(hitsToConfirm = 2)
+        s.update("Sneasel"); s.update("Sneasel")
+        s.update("Combusken")
+        s.reset()
+        assertNull(s.current)
+        assertFalse(s.update("Combusken")) // progress before the reset does not count
+        assertTrue(s.update("Combusken"))
+    }
 }

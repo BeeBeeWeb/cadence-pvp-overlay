@@ -25,6 +25,7 @@ import android.util.Log
 import android.view.WindowManager
 import androidx.core.app.ServiceCompat
 import androidx.core.content.IntentCompat
+import com.beebeeweb.cadence.core.CountCalculator
 import com.beebeeweb.cadence.core.CountFormatter
 import com.beebeeweb.cadence.core.MovesetData
 import com.beebeeweb.cadence.core.MovesetRepository
@@ -48,6 +49,7 @@ class OverlayService : Service() {
     private val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
     private val stabilizer = NameStabilizer(hitsToConfirm = 2, missesToClear = 15)
     private lateinit var panel: OverlayPanel
+    private lateinit var control: ControlButton
 
     private var repository: MovesetRepository? = null
     private var matcher: SpeciesMatcher? = null
@@ -56,6 +58,9 @@ class OverlayService : Service() {
     private var projectionCallback: MediaProjection.Callback? = null
     private var virtualDisplay: VirtualDisplay? = null
     private var imageReader: ImageReader? = null
+
+    /** Starts paused: the user taps the floating button when a battle begins. */
+    @Volatile private var paused = true
 
     @Volatile private var busy = false
     private var lastFrameAt = 0L
@@ -66,6 +71,7 @@ class OverlayService : Service() {
     override fun onCreate() {
         super.onCreate()
         panel = OverlayPanel(this)
+        control = ControlButton(this) { setPaused(!paused) }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -125,7 +131,17 @@ class OverlayService : Service() {
             workerHandler,
         )
         running = true
+        setPaused(true)
+        control.show()
         Log.i(TAG, "Capturing ${width}x$height")
+    }
+
+    /** Main thread. Pausing hides the panel and forgets the current opponent. */
+    private fun setPaused(value: Boolean) {
+        paused = value
+        stabilizer.reset()
+        panel.hide()
+        control.setPaused(value)
     }
 
     /** Runs on the worker thread for every captured frame; processes about three per second. */
@@ -133,7 +149,7 @@ class OverlayService : Service() {
         val image = reader.acquireLatestImage() ?: return
         try {
             val now = SystemClock.elapsedRealtime()
-            if (busy || now - lastFrameAt < MIN_FRAME_INTERVAL_MS) return
+            if (paused || busy || now - lastFrameAt < MIN_FRAME_INTERVAL_MS) return
             val card = cropOpponentCard(image)
             lastFrameAt = now
             busy = true
@@ -167,6 +183,7 @@ class OverlayService : Service() {
 
     /** Main thread (ML Kit delivers its results here). */
     private fun onText(lines: List<String>) {
+        if (paused) return
         val matcher = matcher ?: return
         val species = OpponentNameReader.pickSpecies(lines, matcher)
         if (stabilizer.update(species)) render()
@@ -175,11 +192,11 @@ class OverlayService : Service() {
     private fun render() {
         val name = stabilizer.current
         val movesets = if (name != null) repository?.topMovesets(name).orEmpty() else emptyList()
-        if (name == null || movesets.isEmpty()) {
+        if (movesets.isEmpty()) {
             panel.hide()
             return
         }
-        panel.show(name + "\n" + movesets.joinToString("\n\n") { CountFormatter.format(it) })
+        panel.show(CountFormatter.lines(CountCalculator.sectionsFor(movesets)))
     }
 
     private fun startAsForeground() {
@@ -213,6 +230,7 @@ class OverlayService : Service() {
             p.stop()
         }
         panel.hide()
+        control.hide()
         recognizer.close()
         worker.quitSafely()
         super.onDestroy()

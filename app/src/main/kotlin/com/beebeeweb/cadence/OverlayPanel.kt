@@ -5,10 +5,14 @@ import android.graphics.Color
 import android.graphics.PixelFormat
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
+import android.text.SpannableStringBuilder
+import android.text.Spanned
+import android.text.style.ForegroundColorSpan
 import android.util.Log
 import android.view.Gravity
 import android.view.WindowManager
 import android.widget.TextView
+import com.beebeeweb.cadence.core.FormattedLine
 
 /**
  * The floating text panel drawn over the game. It never takes touches or focus, so taps go
@@ -21,7 +25,7 @@ class OverlayPanel(private val context: Context) {
 
     private val view = TextView(context).apply {
         typeface = Typeface.MONOSPACE
-        textSize = 13f
+        textSize = 12f
         setTextColor(Color.WHITE)
         val pad = dp(8)
         setPadding(pad, pad, pad, pad)
@@ -47,9 +51,9 @@ class OverlayPanel(private val context: Context) {
         alpha = 0.8f
     }
 
-    /** Show the panel with [text], adding it to the screen if needed. Call on the main thread. */
-    fun show(text: String) {
-        view.text = text
+    /** Show the panel with [lines], adding it to the screen if needed. Call on the main thread. */
+    fun show(lines: List<FormattedLine>) {
+        view.text = buildText(lines)
         if (added) return
         try {
             windowManager.addView(view, params)
@@ -70,9 +74,29 @@ class OverlayPanel(private val context: Context) {
         added = false
     }
 
+    /** White text, with each line's highlighted part (the fast-move count) in red. */
+    private fun buildText(lines: List<FormattedLine>): CharSequence {
+        val builder = SpannableStringBuilder()
+        lines.forEachIndexed { index, line ->
+            val start = builder.length
+            builder.append(line.text)
+            line.highlight?.let { range ->
+                builder.setSpan(
+                    ForegroundColorSpan(COUNT_COLOR),
+                    start + range.first,
+                    start + range.last + 1,
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
+                )
+            }
+            if (index < lines.lastIndex) builder.append('\n')
+        }
+        return builder
+    }
+
     private fun dp(value: Int): Int = (value * context.resources.displayMetrics.density).toInt()
 
     private companion object {
         const val TAG = "CadenceOverlay"
+        val COUNT_COLOR: Int = Color.rgb(255, 82, 82) // a red that stays readable on the dark panel
     }
 }

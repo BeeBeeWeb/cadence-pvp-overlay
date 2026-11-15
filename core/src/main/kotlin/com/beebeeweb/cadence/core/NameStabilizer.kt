@@ -26,6 +26,14 @@ class NameStabilizer(
     private var candidateHits = 0
     private var misses = 0
 
+    /** Forget everything, e.g. when reading is paused. */
+    fun reset() {
+        current = null
+        candidate = null
+        candidateHits = 0
+        misses = 0
+    }
+
     /** Feed one frame's reading (null = nothing recognised). Returns true if [current] changed. */
     fun update(reading: String?): Boolean {
         if (reading == null) {

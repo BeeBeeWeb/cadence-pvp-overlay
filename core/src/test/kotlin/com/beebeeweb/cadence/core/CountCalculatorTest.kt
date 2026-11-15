@@ -62,4 +62,34 @@ class CountCalculatorTest {
     fun `charged move must cost energy`() {
         assertThrows(IllegalArgumentException::class.java) { ChargedMove("X", "X", energyCost = 0) }
     }
+
+    @Test
+    fun `movesets sharing a fast move merge into one section without duplicate charged moves`() {
+        val sections = CountCalculator.sectionsFor(
+            listOf(
+                CountCalculator.countsFor(Moveset(BUBBLE, listOf(ICE_BEAM, CHARGED_60))),
+                CountCalculator.countsFor(Moveset(BUBBLE, listOf(ICE_BEAM, CHARGED_40))),
+            ),
+        )
+        assertEquals(1, sections.size)
+        assertEquals(listOf("Fixture 40", "Ice Beam", "Fixture 60"), sections.single().counts.map { it.move.name })
+    }
+
+    @Test
+    fun `different fast moves stay separate in order of first appearance`() {
+        val sections = CountCalculator.sectionsFor(
+            listOf(
+                CountCalculator.countsFor(Moveset(THREE_TURN_FAST, listOf(CHARGED_40))),
+                CountCalculator.countsFor(Moveset(BUBBLE, listOf(ICE_BEAM))),
+                CountCalculator.countsFor(Moveset(THREE_TURN_FAST, listOf(CHARGED_60))),
+            ),
+        )
+        assertEquals(listOf("Fixture Fast 3T", "Bubble"), sections.map { it.fast.name })
+        assertEquals(listOf("Fixture 40", "Fixture 60"), sections[0].counts.map { it.move.name })
+    }
+
+    @Test
+    fun `no movesets give no sections`() {
+        assertEquals(emptyList<FastMoveSection>(), CountCalculator.sectionsFor(emptyList()))
+    }
 }
