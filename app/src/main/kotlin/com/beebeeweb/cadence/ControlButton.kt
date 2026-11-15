@@ -15,7 +15,7 @@ import android.widget.TextView
 import kotlin.math.abs
 
 /**
- * A small floating Start/Pause button that sits over the game. Tap it to toggle; drag it to move it
+ * A small round floating play/pause button that sits over the game. Tap it to toggle; drag it to move it
  * (the position is remembered). Unlike the count panel it takes touches, but only on its own area.
  */
 class ControlButton(
@@ -27,20 +27,19 @@ class ControlButton(
     private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
     private var added = false
 
-    private val background = GradientDrawable().apply { cornerRadius = dp(20).toFloat() }
+    private val background = GradientDrawable().apply { shape = GradientDrawable.OVAL }
 
     private val view = TextView(context).apply {
-        textSize = 14f
+        textSize = 16f
         typeface = Typeface.DEFAULT_BOLD
         setTextColor(Color.WHITE)
         gravity = Gravity.CENTER
-        setPadding(dp(14), dp(8), dp(14), dp(8))
         this.background = this@ControlButton.background
     }
 
     private val params = WindowManager.LayoutParams(
-        WindowManager.LayoutParams.WRAP_CONTENT,
-        WindowManager.LayoutParams.WRAP_CONTENT,
+        dp(44),
+        dp(44),
         WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
         WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
         PixelFormat.TRANSLUCENT,
@@ -55,9 +54,9 @@ class ControlButton(
         setPaused(true)
     }
 
-    /** Update the label and colour. Call on the main thread. */
+    /** Update the icon (play when paused, pause when running) and colour. Call on the main thread. */
     fun setPaused(paused: Boolean) {
-        view.text = if (paused) "▶︎  Start" else "❚❚  Pause"
+        view.text = if (paused) "\u25B6\uFE0E" else "\u275A\u275A" // play / pause
         background.setColor(if (paused) Color.argb(225, 51, 51, 51) else Color.argb(225, 27, 94, 32))
     }
 

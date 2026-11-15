@@ -11,9 +11,8 @@ The app only reads what is on screen; it does not touch the game's code, memory 
 Early work. Great League first.
 
 - [x] `core`: count and turn maths, species-name matching, moveset lookup (pure Kotlin, unit-tested)
-- [x] Great League data in `data/greatleague.json` (786 species, up to 3 movesets each)
+- [x] Great League data in `data/greatleague.json` (786 species: top two fast moves, top three charged moves)
 - [x] Android app skeleton: screen capture, overlay panel, opponent name reading (first version, not yet tried on a device)
-- [ ] Shields and remaining-Pokémon detection
 - [ ] Matchup and backline prediction
 
 ## How counts work
@@ -31,25 +30,11 @@ Example: Bubble gives 11 energy over 3 turns, so Ice Beam (55 energy) takes 5 Bu
     git clone --depth 1 https://github.com/pvpoke/pvpoke
     python tools/import_pvpoke.py --pvpoke pvpoke --out data/greatleague.json
 
-Each species gets up to three movesets: PvPoke's recommended one first, then combinations of its most
-used fast and charged moves. "Most used" comes from PvPoke's simulations, not from real battle logs.
-Regional forms use the in-game name ("Alolan Marowak"); other forms are also reachable by the plain
-species name when that is unambiguous.
-
-## Try the app (Android 11+)
-
-1. Open the project in Android Studio, let Gradle sync, pick the `app` configuration and your phone, press Run.
-2. In Cadence: allow "display over other apps", then tap "Start Cadence".
-3. When Android asks what to share, choose "Entire screen". Switch to the game and start a battle.
-
-Cadence starts paused. A floating button appears over the game: tap **Start** when a battle begins and
-**Pause** when you are done (drag it to move it). While running, the panel appears under the opponent's
-card once the name has been read twice in a row. It lists each fast move once, followed by the charged
-moves with the fast-move count (red) and turns (white). The panel never takes touches, so the game stays
-fully usable. Stop Cadence completely from the app or from the notification.
-
-If the name is not recognised, the card region in `ScreenRegions.kt` and the capture scale in
-`OverlayService.kt` (`CAPTURE_SCALE`) are the first things to tune.
+Each species gets its two most used fast moves, each listed with the same three most used charged moves
+(PvPoke's recommended moveset always comes first). PvPoke tracks fast-move and charged-move usage
+separately, so it cannot say which charged moves go with which fast move. "Most used" comes from PvPoke's
+simulations, not from real battle logs. Regional forms use the in-game name ("Alolan Marowak"); other forms
+are also reachable by the plain species name when that is unambiguous.
 
 ## Run the tests
 

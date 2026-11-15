@@ -74,12 +74,20 @@ class OverlayPanel(private val context: Context) {
         added = false
     }
 
-    /** White text, with each line's highlighted part (the fast-move count) in red. */
+    /** White text; fast-move headers in green and each row's fast-move count in red. */
     private fun buildText(lines: List<FormattedLine>): CharSequence {
         val builder = SpannableStringBuilder()
         lines.forEachIndexed { index, line ->
             val start = builder.length
             builder.append(line.text)
+            if (line.isFastMove) {
+                builder.setSpan(
+                    ForegroundColorSpan(FAST_MOVE_COLOR),
+                    start,
+                    start + line.text.length,
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
+                )
+            }
             line.highlight?.let { range ->
                 builder.setSpan(
                     ForegroundColorSpan(COUNT_COLOR),
@@ -98,5 +106,6 @@ class OverlayPanel(private val context: Context) {
     private companion object {
         const val TAG = "CadenceOverlay"
         val COUNT_COLOR: Int = Color.rgb(255, 82, 82) // a red that stays readable on the dark panel
+        val FAST_MOVE_COLOR: Int = Color.rgb(105, 240, 174) // a light green, readable on the dark panel
     }
 }

@@ -8,15 +8,14 @@ on PvPoke's file layout.
 Usage:
     python tools/import_pvpoke.py --pvpoke /path/to/pvpoke --out data/greatleague.json
 
-Each species gets up to three movesets (one fast move plus up to two charged moves):
-  1. PvPoke's recommended moveset for the league, then
-  2. combinations of its two most used fast moves and four most used charged moves, ranked by
-     fast-move usage share x charged-move usage share.
-Usage numbers come from PvPoke's league simulations, so "likely" means "used most in simulations",
-not "seen most often in real battles".
+Each species gets its two most used fast moves, each listed with the same three most used charged
+moves. PvPoke's recommended moveset always comes first: its fast move leads the fast moves and its
+charged moves lead the charged moves. PvPoke records fast-move and charged-move usage separately, so it
+cannot say which charged moves go with which fast move; every fast move therefore shows the same list.
+Usage numbers come from PvPoke's league simulations, so "most used" means used most in simulations,
+not seen most often in real battles.
 """
 import argparse
-import itertools
 import json
 import re
 import subprocess
@@ -25,8 +24,7 @@ from datetime import date
 from pathlib import Path
 
 MAX_FAST = 2
-MAX_CHARGED = 4
-MAX_MOVESETS = 3
+MAX_CHARGED = 3
 REGIONAL = ("Alolan", "Galarian", "Hisuian", "Paldean")
 
 
@@ -59,38 +57,30 @@ def usage_shares(entries, valid):
     return sorted(((e["moveId"], e["uses"] / total) for e in usable), key=lambda x: -x[1])
 
 
-def build_movesets(entry, fast_table, charged_table):
-    moves = entry["moves"]
-    fast = usage_shares(moves.get("fastMoves", []), fast_table)[:MAX_FAST]
-    charged = usage_shares(moves.get("chargedMoves", []), charged_table)[:MAX_CHARGED]
-    charged_share = dict(charged)
-
-    candidates = []
-    if fast and charged:
-        pair_size = 2 if len(charged) >= 2 else 1
-        for (fast_id, f_share), pair in itertools.product(fast, itertools.combinations(charged, pair_size)):
-            score = f_share * sum(share for _, share in pair)
-            candidates.append((score, fast_id, [c for c, _ in pair]))
-        candidates.sort(key=lambda c: -c[0])
-
-    ordered = []
-    recommended = entry.get("moveset", [])
-    if recommended and recommended[0] in fast_table:
-        rec_charged = [m for m in recommended[1:] if m in charged_table]
-        if rec_charged:
-            ordered.append((recommended[0], rec_charged))
-    ordered.extend((fast_id, pair) for _, fast_id, pair in candidates)
-
-    result, seen = [], set()
-    for fast_id, pair in ordered:
-        key = (fast_id, frozenset(pair))
-        if key in seen:
-            continue
-        seen.add(key)
-        result.append({"fast": fast_id, "charged": pair})
-        if len(result) == MAX_MOVESETS:
-            break
+def unique(items):
+    seen, result = set(), []
+    for item in items:
+        if item not in seen:
+            seen.add(item)
+            result.append(item)
     return result
+
+
+def build_movesets(entry, fast_table, charged_table):
+    """Top fast moves, each with the same top charged moves. Returns [] if nothing is usable."""
+    moves = entry["moves"]
+    fast_ranked = [m for m, _ in usage_shares(moves.get("fastMoves", []), fast_table)]
+    charged_ranked = [m for m, _ in usage_shares(moves.get("chargedMoves", []), charged_table)]
+
+    recommended = entry.get("moveset", [])
+    rec_fast = [recommended[0]] if recommended and recommended[0] in fast_table else []
+    rec_charged = [m for m in recommended[1:] if m in charged_table]
+
+    fast = unique(rec_fast + fast_ranked)[:MAX_FAST]
+    charged = unique(rec_charged + charged_ranked)[:MAX_CHARGED]
+    if not fast or not charged:
+        return []
+    return [{"fast": f, "charged": list(charged)} for f in fast]
 
 
 def base_name(name):

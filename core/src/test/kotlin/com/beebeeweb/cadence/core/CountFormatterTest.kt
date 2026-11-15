@@ -26,9 +26,9 @@ class CountFormatterTest {
         assertEquals(
             listOf(
                 "Bubble (+11 / 3t)",
-                "Fixture 40   4x  12t",
-                "Ice Beam     5x  15t",
-                "Fixture 60   6x  18t",
+                "Fixture 40(40)   4x  12t",
+                "Ice Beam(55)     5x  15t",
+                "Fixture 60(60)   6x  18t",
             ),
             lines.map { it.text },
         )
@@ -41,8 +41,16 @@ class CountFormatterTest {
     }
 
     @Test
-    fun `header has no highlight`() {
-        assertNull(CountFormatter.lines(sections).first().highlight)
+    fun `header has no count highlight but is marked as a fast move`() {
+        val lines = CountFormatter.lines(sections)
+        assertNull(lines.first().highlight)
+        assertEquals(listOf(true, false, false, false), lines.map { it.isFastMove })
+    }
+
+    @Test
+    fun `charged moves show their energy cost in brackets`() {
+        val rows = CountFormatter.lines(sections).drop(1)
+        assertEquals(listOf("Fixture 40(40)", "Ice Beam(55)", "Fixture 60(60)"), rows.map { it.text.substring(0, 14).trimEnd() })
     }
 
     @Test
@@ -54,7 +62,7 @@ class CountFormatterTest {
             ),
         )
         assertEquals(
-            listOf("Bubble (+11 / 3t)", "Ice Beam   5x  15t", "", "Fixture Fast 3T (+10 / 3t)", "Fixture 40   4x  12t"),
+            listOf("Bubble (+11 / 3t)", "Ice Beam(55)   5x  15t", "", "Fixture Fast 3T (+10 / 3t)", "Fixture 40(40)   4x  12t"),
             CountFormatter.lines(two).map { it.text },
         )
     }

@@ -72,8 +72,17 @@ class MovesetDataTest {
     fun `real data has a sensible number of species and movesets`() {
         val species = realData()
         assertTrue("only ${species.size} species", species.size > 500)
-        assertTrue(species.all { it.movesets.isNotEmpty() && it.movesets.size <= 3 })
-        assertTrue(species.all { s -> s.movesets.all { it.charged.isNotEmpty() && it.charged.size <= 2 } })
+        assertTrue(species.all { it.movesets.isNotEmpty() && it.movesets.size <= 2 }) // top two fast moves
+        assertTrue(species.all { s -> s.movesets.all { it.charged.isNotEmpty() && it.charged.size <= 3 } }) // top three charged
+    }
+
+    @Test
+    fun `real data lists the same charged moves under each fast move`() {
+        // PvPoke tracks fast and charged move usage separately, so it cannot pair them.
+        for (s in realData()) {
+            val first = s.movesets.first().charged.map { it.id }
+            assertTrue("${s.name} has differing charged lists", s.movesets.all { m -> m.charged.map { it.id } == first })
+        }
     }
 
     @Test
@@ -94,7 +103,7 @@ class MovesetDataTest {
         for (name in listOf("Sneasel", "Combusken", "Magcargo", "Flareon")) {
             val matched = matcher.match(name)
             assertNotNull("$name not matched", matched)
-            assertEquals("$name has no movesets", 3, repository.topMovesets(matched!!).size)
+            assertTrue("$name has no movesets", repository.topMovesets(matched!!).isNotEmpty())
         }
     }
 
