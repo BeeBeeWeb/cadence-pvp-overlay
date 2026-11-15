@@ -248,8 +248,11 @@ class OverlayService : Service() {
         val matcher = matcher ?: return
         val species = OpponentNameReader.pickSpecies(lines, matcher)
         misses = if (species == null) misses + 1 else 0
+        val hadOpponent = stabilizer.current != null
         val changed = stabilizer.update(species)
-        if (leadTypes.isEmpty()) {
+        // The lead is the first opponent read after the card was empty (battle start or a new battle),
+        // not just the first one since pressing play.
+        if (!hadOpponent) {
             stabilizer.current?.let { leadTypes = repository?.find(it)?.types.orEmpty() }
         }
         if (misses >= HIDE_AFTER_MISSES) {
@@ -282,7 +285,7 @@ class OverlayService : Service() {
             CmpEstimator.label(CmpEstimator.compare(mineAttack, theirAttack))
         }
         val lines = CountFormatter.lines(sections) { section -> mine?.let { TimingFormatter.row(it.turns, section.fast.turns) } }
-        val back = BacklinePredictor.label(BacklinePredictor.likelyTypes(leadTypes))
+        val back = BacklinePredictor.label(BacklinePredictor.likelyTypes(leadTypes, limit = 4))
         val header = listOfNotNull(cmp, back).map { FormattedLine(it) }
         panel.show(if (header.isNotEmpty()) header + FormattedLine("") + lines else lines)
     }
