@@ -9,6 +9,7 @@ import android.app.Service
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.graphics.Bitmap
+import android.graphics.RectF
 import android.graphics.PixelFormat
 import android.hardware.display.DisplayManager
 import android.hardware.display.VirtualDisplay
@@ -27,7 +28,11 @@ import androidx.core.app.ServiceCompat
 import androidx.core.content.IntentCompat
 import com.beebeeweb.cadence.core.CountCalculator
 import com.beebeeweb.cadence.core.CountFormatter
+import com.beebeeweb.cadence.core.ActivePokemon
+import com.beebeeweb.cadence.core.FastMove
 import com.beebeeweb.cadence.core.MovesetData
+import com.beebeeweb.cadence.core.TeamMember
+import com.beebeeweb.cadence.core.TimingFormatter
 import com.beebeeweb.cadence.core.MovesetRepository
 import com.beebeeweb.cadence.core.NameStabilizer
 import com.beebeeweb.cadence.core.OpponentNameReader
@@ -53,6 +58,12 @@ class OverlayService : Service() {
 
     private var repository: MovesetRepository? = null
     private var matcher: SpeciesMatcher? = null
+
+    // Your own team (set up in "Your team"); reloaded whenever you press play.
+    @Volatile private var team: List<TeamMember?> = emptyList()
+    private var activeIndex: Int? = null
+    private var chargedNames: Map<String, String> = emptyMap()
+    private var fastById: Map<String, FastMove> = emptyMap()
 
     private var projection: MediaProjection? = null
     private var projectionCallback: MediaProjection.Callback? = null
@@ -95,7 +106,11 @@ class OverlayService : Service() {
         }
 
         try {
-            val species = assets.open(DATA_ASSET).bufferedReader().use { MovesetData.parse(it.readText()) }
+            val json = assets.open(DATA_ASSET).bufferedReader().use { it.readText() }
+            val species = MovesetData.parse(json)
+            val catalog = MovesetData.parseCatalog(json)
+            chargedNames = catalog.charged.associate { it.id to it.name }
+            fastById = catalog.fast.associateBy { it.id }
             repository = MovesetRepository(species).also { matcher = SpeciesMatcher(it.speciesNames) }
         } catch (e: Exception) {
             Log.e(TAG, "Could not load $DATA_ASSET", e)
@@ -131,13 +146,20 @@ class OverlayService : Service() {
             workerHandler,
         )
         running = true
+        loadTeam()
         setPaused(true)
         control.show()
         Log.i(TAG, "Capturing ${width}x$height")
     }
 
     /** Main thread. Pausing hides the panel and forgets the current opponent. */
+    private fun loadTeam() {
+        team = TeamStore(this).load()
+        activeIndex = team.indexOfFirst { it != null }.takeIf { it >= 0 }
+    }
+
     private fun setPaused(value: Boolean) {
+        if (!value) loadTeam() // pick up any change made in "Your team"
         paused = value
         stabilizer.reset()
         panel.hide()
@@ -150,7 +172,8 @@ class OverlayService : Service() {
         try {
             val now = SystemClock.elapsedRealtime()
             if (paused || busy || now - lastFrameAt < MIN_FRAME_INTERVAL_MS) return
-            val card = cropOpponentCard(image)
+            val wantButtons = team.any { it != null }
+            val (card, buttons) = cropRegions(image, wantButtons)
             lastFrameAt = now
             busy = true
             recognizer.process(InputImage.fromBitmap(card, 0))
@@ -159,26 +182,52 @@ class OverlayService : Service() {
                     Log.w(TAG, "Text recognition failed", e)
                     onText(emptyList())
                 }
-                .addOnCompleteListener { busy = false }
+                .addOnCompleteListener { readButtons(buttons) }
         } finally {
             image.close()
         }
     }
 
-    private fun cropOpponentCard(image: Image): Bitmap {
+    /** Second step of a frame: read your charged-move labels to see which of your Pokémon is out. */
+    private fun readButtons(buttons: Bitmap?) {
+        if (buttons == null) {
+            busy = false
+            return
+        }
+        recognizer.process(InputImage.fromBitmap(buttons, 0))
+            .addOnSuccessListener { text -> onButtonText(text.textBlocks.flatMap { block -> block.lines.map { it.text } }) }
+            .addOnFailureListener { e -> Log.w(TAG, "Button text recognition failed", e) }
+            .addOnCompleteListener { busy = false }
+    }
+
+    /** Main thread. Keeps the last known Pokémon when the labels can't be read. */
+    private fun onButtonText(lines: List<String>) {
+        if (paused) return
+        val index = ActivePokemon.pick(lines, team, chargedNames) ?: return
+        if (index != activeIndex) {
+            activeIndex = index
+            render()
+        }
+    }
+
+    private fun cropRegions(image: Image, wantButtons: Boolean): Pair<Bitmap, Bitmap?> {
         val plane = image.planes[0]
         val pixelStride = plane.pixelStride
         val rowPadding = plane.rowStride - pixelStride * image.width
         val full = Bitmap.createBitmap(image.width + rowPadding / pixelStride, image.height, Bitmap.Config.ARGB_8888)
         full.copyPixelsFromBuffer(plane.buffer)
-        val region = ScreenRegions.OPPONENT_CARD
+        val card = crop(full, image, ScreenRegions.OPPONENT_CARD)
+        val buttons = if (wantButtons) crop(full, image, ScreenRegions.CHARGED_BUTTONS) else null
+        full.recycle()
+        return card to buttons
+    }
+
+    private fun crop(full: Bitmap, image: Image, region: RectF): Bitmap {
         val x = (image.width * region.left).toInt()
         val y = (image.height * region.top).toInt()
         val w = (image.width * (region.right - region.left)).toInt()
         val h = (image.height * (region.bottom - region.top)).toInt()
-        val card = Bitmap.createBitmap(full, x, y, w, h)
-        full.recycle()
-        return card
+        return Bitmap.createBitmap(full, x, y, w, h)
     }
 
     /** Main thread (ML Kit delivers its results here). */
@@ -196,7 +245,9 @@ class OverlayService : Service() {
             panel.hide()
             return
         }
-        panel.show(CountFormatter.lines(CountCalculator.sectionsFor(movesets)))
+        val mine = team.getOrNull(activeIndex ?: -1)?.let { fastById[it.fastId] }
+        val sections = CountCalculator.sectionsFor(movesets)
+        panel.show(CountFormatter.lines(sections) { section -> mine?.let { TimingFormatter.row(it.turns, section.fast.turns) } })
     }
 
     private fun startAsForeground() {

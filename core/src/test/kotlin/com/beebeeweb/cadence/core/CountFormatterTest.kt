@@ -21,6 +21,12 @@ class CountFormatterTest {
     private fun FormattedLine.highlighted(): String = text.substring(highlight!!.first, highlight!!.last + 1)
 
     @Test
+    fun `extra row goes right under the fast move header`() {
+        val lines = CountFormatter.lines(sections) { "row for ${it.fast.name}" }
+        assertEquals(listOf("Bubble (+11 / 3t)", "row for Bubble", "Fixture 40(40)   4x  12t"), lines.map { it.text }.take(3))
+    }
+
+    @Test
     fun `fast move header appears once, then every charged move quickest first`() {
         val lines = CountFormatter.lines(sections)
         assertEquals(

@@ -1,17 +1,16 @@
 package com.beebeeweb.cadence
 
-import android.graphics.Color
 import android.os.Bundle
-import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import android.widget.AutoCompleteTextView
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.ScrollView
-import android.widget.Spinner
 import android.widget.TextView
 import androidx.activity.ComponentActivity
+import com.beebeeweb.cadence.core.ChargedMove
+import com.beebeeweb.cadence.core.FastMove
 import com.beebeeweb.cadence.core.MoveCatalog
 import com.beebeeweb.cadence.core.MovesetData
 import com.beebeeweb.cadence.core.Species
@@ -23,12 +22,14 @@ class TeamActivity : ComponentActivity() {
 
     private class Slot(
         val species: AutoCompleteTextView,
-        val fast: Spinner,
-        val charged: List<Spinner>,
+        val fast: AutoCompleteTextView,
+        val charged: List<AutoCompleteTextView>,
     )
 
     private lateinit var catalog: MoveCatalog
     private lateinit var speciesByName: Map<String, Species>
+    private lateinit var fastByLabel: Map<String, FastMove>
+    private lateinit var chargedByLabel: Map<String, ChargedMove>
     private val slots = ArrayList<Slot>()
     private lateinit var status: TextView
 
@@ -40,6 +41,8 @@ class TeamActivity : ComponentActivity() {
         val species = MovesetData.parse(json)
         speciesByName = species.associateBy { it.name.lowercase() }
         val speciesNames = species.map { it.name }.sorted()
+        fastByLabel = catalog.fast.associateBy { fastLabel(it).lowercase() }
+        chargedByLabel = catalog.charged.associateBy { chargedLabel(it).lowercase() }
 
         val pad = (16 * resources.displayMetrics.density).toInt()
         val root = LinearLayout(this).apply {
@@ -49,6 +52,10 @@ class TeamActivity : ComponentActivity() {
         root.addView(TextView(this).apply {
             text = "Your team"
             textSize = 24f
+        })
+        root.addView(TextView(this).apply {
+            text = "Tap a field and type to search."
+            setPadding(0, pad / 2, 0, 0)
         })
 
         val saved = TeamStore(this).load()
@@ -72,50 +79,52 @@ class TeamActivity : ComponentActivity() {
         setContentView(ScrollView(this).apply { addView(root) })
     }
 
-    private fun addSlot(root: LinearLayout, speciesNames: List<String>): Slot {
-        val speciesField = AutoCompleteTextView(this).apply {
-            hint = "Species"
-            threshold = 1
-            setSingleLine()
-            setAdapter(ArrayAdapter(this@TeamActivity, android.R.layout.simple_dropdown_item_1line, speciesNames))
-        }
-        val fastLabels = catalog.fast.map { "${it.name}  (+${it.energyGain}, ${it.turns}t)" }
-        val fast = Spinner(this).apply {
-            adapter = spinnerAdapter(fastLabels)
-        }
-        val chargedLabels = listOf("none") + catalog.charged.map { "${it.name}  (${it.energyCost})" }
-        val charged = List(2) {
-            Spinner(this).apply {
-                adapter = spinnerAdapter(chargedLabels)
-            }
-        }
-        val slot = Slot(speciesField, fast, charged)
+    private fun fastLabel(move: FastMove) = "${move.name} (+${move.energyGain}, ${move.turns}t)"
 
-        // Picking a species preselects its most common moveset; you can still change every move.
+    private fun chargedLabel(move: ChargedMove) = "${move.name} (${move.energyCost})"
+
+    private fun searchField(hint: String, items: List<String>) = AutoCompleteTextView(this).apply {
+        this.hint = hint
+        threshold = 1
+        setSingleLine()
+        setAdapter(ArrayAdapter(this@TeamActivity, android.R.layout.simple_dropdown_item_1line, items))
+        setOnClickListener { showDropDown() }
+    }
+
+    private fun addSlot(root: LinearLayout, speciesNames: List<String>): Slot {
+        val speciesField = searchField("Species", speciesNames)
+        val fastField = searchField("Fast move", catalog.fast.map { fastLabel(it) })
+        val chargedLabels = catalog.charged.map { chargedLabel(it) }
+        val chargedFields = listOf(searchField("Charged move 1", chargedLabels), searchField("Charged move 2 (optional)", chargedLabels))
+        val slot = Slot(speciesField, fastField, chargedFields)
+
+        // Picking a species fills in its most common moveset; you can still change every move.
         speciesField.setOnItemClickListener { _, _, _, _ ->
             speciesByName[speciesField.text.toString().trim().lowercase()]?.movesets?.firstOrNull()?.let { moveset ->
-                select(slot, moveset.fast.id, moveset.charged.take(2).map { it.id })
+                select(slot, moveset.fast, moveset.charged.take(2))
             }
         }
 
         root.addView(speciesField, matchWidth())
-        root.addView(fast, matchWidth())
-        charged.forEach { root.addView(it, matchWidth()) }
+        root.addView(fastField, matchWidth())
+        chargedFields.forEach { root.addView(it, matchWidth()) }
         return slot
     }
 
     private fun fill(slot: Slot, member: TeamMember) {
         slot.species.setText(member.speciesName)
+        select(
+            slot,
+            catalog.fast.firstOrNull { it.id == member.fastId },
+            member.chargedIds.mapNotNull { id -> catalog.charged.firstOrNull { it.id == id } },
+        )
         slot.species.dismissDropDown()
-        select(slot, member.fastId, member.chargedIds)
     }
 
-    private fun select(slot: Slot, fastId: String, chargedIds: List<String>) {
-        val fastIndex = catalog.fast.indexOfFirst { it.id == fastId }
-        if (fastIndex >= 0) slot.fast.setSelection(fastIndex)
-        slot.charged.forEachIndexed { i, spinner ->
-            val chargedIndex = catalog.charged.indexOfFirst { it.id == chargedIds.getOrNull(i) }
-            spinner.setSelection(chargedIndex + 1) // 0 is "none"
+    private fun select(slot: Slot, fast: FastMove?, charged: List<ChargedMove>) {
+        slot.fast.setText(fast?.let { fastLabel(it) }.orEmpty(), false)
+        slot.charged.forEachIndexed { i, field ->
+            field.setText(charged.getOrNull(i)?.let { chargedLabel(it) }.orEmpty(), false)
         }
     }
 
@@ -129,32 +138,24 @@ class TeamActivity : ComponentActivity() {
                 return@forEachIndexed
             }
             val species = speciesByName[typed.lowercase()]
-            if (species == null) {
-                problems += "Pokémon ${index + 1}: pick a species from the list"
-                team += null
-                return@forEachIndexed
+            val fast = fastByLabel[slot.fast.text.toString().trim().lowercase()]
+            val charged = slot.charged
+                .map { it.text.toString().trim().lowercase() }
+                .filter { it.isNotEmpty() }
+                .map { chargedByLabel[it] }
+            when {
+                species == null -> problems += "Pokémon ${index + 1}: pick a species from the list"
+                fast == null -> problems += "Pokémon ${index + 1}: pick a fast move from the list"
+                charged.any { it == null } -> problems += "Pokémon ${index + 1}: pick charged moves from the list"
             }
-            val chargedIds = slot.charged
-                .map { it.selectedItemPosition }
-                .filter { it > 0 }
-                .map { catalog.charged[it - 1].id }
-                .distinct()
-            team += TeamMember(species.name, catalog.fast[slot.fast.selectedItemPosition].id, chargedIds)
+            if (species == null || fast == null || charged.any { it == null }) {
+                team += null
+            } else {
+                team += TeamMember(species.name, fast.id, charged.filterNotNull().map { it.id }.distinct())
+            }
         }
         TeamStore(this).save(team)
         status.text = if (problems.isEmpty()) "Saved." else "Saved, except:\n" + problems.joinToString("\n")
-    }
-
-    /** Spinner rows with an explicit dark text colour, so the selected move is always visible. */
-    private fun spinnerAdapter(labels: List<String>): ArrayAdapter<String> {
-        val dark = Color.rgb(33, 33, 33)
-        return object : ArrayAdapter<String>(this, android.R.layout.simple_spinner_dropdown_item, labels) {
-            override fun getView(position: Int, convertView: View?, parent: ViewGroup): View =
-                (super.getView(position, convertView, parent) as TextView).apply { setTextColor(dark) }
-
-            override fun getDropDownView(position: Int, convertView: View?, parent: ViewGroup): View =
-                (super.getDropDownView(position, convertView, parent) as TextView).apply { setTextColor(dark) }
-        }
     }
 
     private fun matchWidth() = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)

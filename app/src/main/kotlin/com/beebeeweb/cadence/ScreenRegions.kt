@@ -11,4 +11,7 @@ object ScreenRegions {
 
     /** The opponent's card in the top-right corner: CP and species name, shields and remaining Pokémon. */
     val OPPONENT_CARD = RectF(0.58f, 0.055f, 1.0f, 0.12f)
+
+    /** The labels under your two charged-move buttons (for example ACROBATICS, ENERGY BALL). */
+    val CHARGED_BUTTONS = RectF(0.12f, 0.925f, 0.88f, 0.99f)
 }

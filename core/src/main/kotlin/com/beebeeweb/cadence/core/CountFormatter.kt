@@ -23,12 +23,19 @@ object CountFormatter {
      *     Aqua Tail(35)      12x  12t
      *     Last Resort(55)    19x  19t
      *
+     * [extraRow], when it returns text for a section, adds one plain line right under the header
+     * (used for the throw-timing row).
+     *
      * Sections are separated by an empty line. The count ("12x") carries the highlight; turns do not.
      */
-    fun lines(sections: List<FastMoveSection>): List<FormattedLine> = buildList {
+    fun lines(
+        sections: List<FastMoveSection>,
+        extraRow: (FastMoveSection) -> String? = { null },
+    ): List<FormattedLine> = buildList {
         sections.forEachIndexed { index, section ->
             if (index > 0) add(FormattedLine(""))
             add(FormattedLine("${section.fast.name} (+${section.fast.energyGain} / ${section.fast.turns}t)", isFastMove = true))
+            extraRow(section)?.let { add(FormattedLine(it)) }
             val labels = section.counts.map { "${it.move.name}(${it.move.energyCost})" }
             val labelWidth = labels.maxOfOrNull { it.length } ?: 0
             section.counts.forEachIndexed { i, count ->
