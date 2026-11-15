@@ -36,6 +36,7 @@ object MovesetData {
             Species(
                 id = id,
                 name = s.text("name"),
+                baseAttack = s["atk"]?.jsonPrimitive?.int ?: 0,
                 aliases = s["aliases"]?.jsonArray?.map { it.jsonPrimitive.content } ?: emptyList(),
                 movesets = s.getValue("movesets").jsonArray.map { m ->
                     val o = m.jsonObject

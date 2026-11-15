@@ -108,6 +108,7 @@ def main():
     moves = read_json(data / "gamemaster" / "moves.json")
     rankings = read_json(data / "rankings" / "all" / "overall" / "rankings-1500.json")
     fast_table, charged_table = classify_moves(moves)
+    base_attack = {p["speciesId"]: p["baseStats"]["atk"] for p in read_json(data / "gamemaster" / "pokemon.json")}
 
     # One entry per species: prefer the normal version over its Shadow version, keep file order.
     chosen = {}
@@ -140,6 +141,9 @@ def main():
             used_fast.add(ms["fast"])
             used_charged.update(ms["charged"])
         item = {"id": entry["speciesId"], "name": name, "movesets": movesets}
+        atk = base_attack.get(entry["speciesId"]) or base_attack.get(entry["speciesId"].removesuffix("_shadow"))
+        if atk:
+            item["atk"] = atk  # base Attack stat, used for charged move priority
         if aliases:
             item["aliases"] = aliases
         species.append(item)

@@ -29,7 +29,9 @@ import androidx.core.content.IntentCompat
 import com.beebeeweb.cadence.core.CountCalculator
 import com.beebeeweb.cadence.core.CountFormatter
 import com.beebeeweb.cadence.core.ActivePokemon
+import com.beebeeweb.cadence.core.CmpEstimator
 import com.beebeeweb.cadence.core.FastMove
+import com.beebeeweb.cadence.core.FormattedLine
 import com.beebeeweb.cadence.core.MovesetData
 import com.beebeeweb.cadence.core.TeamMember
 import com.beebeeweb.cadence.core.TimingFormatter
@@ -268,7 +270,13 @@ class OverlayService : Service() {
         }
         val mine = team.getOrNull(activeIndex ?: -1)?.let { fastById[it.fastId] }
         val sections = CountCalculator.sectionsFor(movesets)
-        panel.show(CountFormatter.lines(sections) { section -> mine?.let { TimingFormatter.row(it.turns, section.fast.turns) } })
+        val cmp = team.getOrNull(activeIndex ?: -1)?.let { member ->
+            val mineAttack = repository?.find(member.speciesName)?.baseAttack ?: 0
+            val theirAttack = repository?.find(name!!)?.baseAttack ?: 0
+            CmpEstimator.label(CmpEstimator.compare(mineAttack, theirAttack))
+        }
+        val lines = CountFormatter.lines(sections) { section -> mine?.let { TimingFormatter.row(it.turns, section.fast.turns) } }
+        panel.show(if (cmp != null) listOf(FormattedLine(cmp), FormattedLine("")) + lines else lines)
     }
 
     private fun startAsForeground() {

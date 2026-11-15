@@ -20,13 +20,20 @@ class MovesetDataTest {
             "FIXTURE_60": {"name": "Fixture 60", "cost": 60}
           },
           "species": [
-            {"id": "azumarill", "name": "Azumarill",
+            {"id": "azumarill", "name": "Azumarill", "atk": 112,
              "movesets": [{"fast": "BUBBLE", "charged": ["ICE_BEAM", "FIXTURE_60"]}]},
             {"id": "marowak_alolan", "name": "Alolan Marowak", "aliases": ["Marowak (Alolan)"],
              "movesets": [{"fast": "BUBBLE", "charged": ["FIXTURE_60"]}]}
           ]
         }
     """.trimIndent()
+
+    @Test
+    fun baseAttackIsReadWhenPresent() {
+        val species = MovesetData.parse(fixture).associateBy { it.id }
+        assertEquals(112, species.getValue("azumarill").baseAttack)
+        assertEquals(0, species.getValue("marowak_alolan").baseAttack)
+    }
 
     @Test
     fun catalogListsEveryMoveSortedByName() {
