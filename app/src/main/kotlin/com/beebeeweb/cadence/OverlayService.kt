@@ -29,6 +29,7 @@ import androidx.core.content.IntentCompat
 import com.beebeeweb.cadence.core.CountCalculator
 import com.beebeeweb.cadence.core.CountFormatter
 import com.beebeeweb.cadence.core.ActivePokemon
+import com.beebeeweb.cadence.core.BacklinePredictor
 import com.beebeeweb.cadence.core.CmpEstimator
 import com.beebeeweb.cadence.core.FastMove
 import com.beebeeweb.cadence.core.FormattedLine
@@ -78,6 +79,7 @@ class OverlayService : Service() {
     // The panel is hidden while the opponent's name can't be read (e.g. during a charged-move animation),
     // so you can see the move that was thrown.
     private var misses = 0
+    private var leadTypes: List<String> = emptyList() // types of the first opponent seen this battle
     private var nameVisible = false
 
     @Volatile private var busy = false
@@ -170,6 +172,7 @@ class OverlayService : Service() {
         paused = value
         misses = 0
         nameVisible = false
+        leadTypes = emptyList()
         stabilizer.reset()
         panel.hide()
         control.setPaused(value)
@@ -246,6 +249,9 @@ class OverlayService : Service() {
         val species = OpponentNameReader.pickSpecies(lines, matcher)
         misses = if (species == null) misses + 1 else 0
         val changed = stabilizer.update(species)
+        if (leadTypes.isEmpty()) {
+            stabilizer.current?.let { leadTypes = repository?.find(it)?.types.orEmpty() }
+        }
         if (misses >= HIDE_AFTER_MISSES) {
             nameVisible = false
             panel.hide()
@@ -276,7 +282,9 @@ class OverlayService : Service() {
             CmpEstimator.label(CmpEstimator.compare(mineAttack, theirAttack))
         }
         val lines = CountFormatter.lines(sections) { section -> mine?.let { TimingFormatter.row(it.turns, section.fast.turns) } }
-        panel.show(if (cmp != null) listOf(FormattedLine(cmp), FormattedLine("")) + lines else lines)
+        val back = BacklinePredictor.label(BacklinePredictor.likelyTypes(leadTypes))
+        val header = listOfNotNull(cmp, back).map { FormattedLine(it) }
+        panel.show(if (header.isNotEmpty()) header + FormattedLine("") + lines else lines)
     }
 
     private fun startAsForeground() {

@@ -44,6 +44,8 @@ data class Species(
     val aliases: List<String> = emptyList(),
     /** Base Attack stat (0 when unknown); decides charged move priority together with level and IVs. */
     val baseAttack: Int = 0,
+    /** Lower-case types, e.g. ["water", "fairy"]; empty when unknown. */
+    val types: List<String> = emptyList(),
 )
 
 /**

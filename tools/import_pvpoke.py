@@ -108,7 +108,9 @@ def main():
     moves = read_json(data / "gamemaster" / "moves.json")
     rankings = read_json(data / "rankings" / "all" / "overall" / "rankings-1500.json")
     fast_table, charged_table = classify_moves(moves)
-    base_attack = {p["speciesId"]: p["baseStats"]["atk"] for p in read_json(data / "gamemaster" / "pokemon.json")}
+    pokemon = read_json(data / "gamemaster" / "pokemon.json")
+    base_attack = {p["speciesId"]: p["baseStats"]["atk"] for p in pokemon}
+    types = {p["speciesId"]: [t for t in p["types"] if t != "none"] for p in pokemon}
 
     # One entry per species: prefer the normal version over its Shadow version, keep file order.
     chosen = {}
@@ -144,6 +146,9 @@ def main():
         atk = base_attack.get(entry["speciesId"]) or base_attack.get(entry["speciesId"].removesuffix("_shadow"))
         if atk:
             item["atk"] = atk  # base Attack stat, used for charged move priority
+        species_types = types.get(entry["speciesId"]) or types.get(entry["speciesId"].removesuffix("_shadow"))
+        if species_types:
+            item["types"] = species_types  # used to guess the backline's types
         if aliases:
             item["aliases"] = aliases
         species.append(item)
