@@ -79,7 +79,7 @@ class OverlayService : Service() {
     // The panel is hidden while the opponent's name can't be read (e.g. during a charged-move animation),
     // so you can see the move that was thrown.
     private var misses = 0
-    private var leadTypes: List<String> = emptyList() // types of the first opponent seen this battle
+    private var leadBackline: List<String> = emptyList() // likely backline types for this battle's lead
     private var nameVisible = false
 
     @Volatile private var busy = false
@@ -172,7 +172,7 @@ class OverlayService : Service() {
         paused = value
         misses = 0
         nameVisible = false
-        leadTypes = emptyList()
+        leadBackline = emptyList()
         stabilizer.reset()
         panel.hide()
         control.setPaused(value)
@@ -253,7 +253,10 @@ class OverlayService : Service() {
         // The lead is the first opponent read after the card was empty (battle start or a new battle),
         // not just the first one since pressing play.
         if (!hadOpponent) {
-            stabilizer.current?.let { leadTypes = repository?.find(it)?.types.orEmpty() }
+            leadBackline = stabilizer.current?.let { repository?.find(it) }?.let { lead ->
+                // PvPoke-based teammate types when we have them, otherwise a guess from the lead's weaknesses
+                lead.backlineTypes.ifEmpty { BacklinePredictor.likelyTypes(lead.types, limit = 4) }
+            }.orEmpty()
         }
         if (misses >= HIDE_AFTER_MISSES) {
             nameVisible = false
@@ -285,7 +288,7 @@ class OverlayService : Service() {
             CmpEstimator.label(CmpEstimator.compare(mineAttack, theirAttack))
         }
         val lines = CountFormatter.lines(sections) { section -> mine?.let { TimingFormatter.row(it.turns, section.fast.turns) } }
-        val back = BacklinePredictor.label(BacklinePredictor.likelyTypes(leadTypes, limit = 4))
+        val back = BacklinePredictor.label(leadBackline)
         val header = listOfNotNull(cmp, back).map { FormattedLine(it) }
         panel.show(if (header.isNotEmpty()) header + FormattedLine("") + lines else lines)
     }

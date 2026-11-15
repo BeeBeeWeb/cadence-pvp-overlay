@@ -98,6 +98,35 @@ def display_and_aliases(pvpoke_name):
     return pvpoke_name, [species]
 
 
+def backline_types(entry, rankings, types, partners=6, limit=4):
+    """Types of Pokemon that tend to beat the ones that beat `entry`, as PvPoke's suggested teammates do.
+
+    PvPoke computes its suggested teammates in the browser from battle simulations, so the full list is
+    not in the repository. What is stored is, for every Pokemon, its five worst matchups ("counters") and
+    five best matchups. A Pokemon that has one of this entry's counters among its best matchups covers
+    that weakness; the more counters it covers (and the higher it ranks), the better a teammate it is.
+    The types of the best few teammates, weighted by that score, are the likely backline types.
+    """
+    def base(species_id):
+        return species_id.removesuffix("_shadow")
+
+    counters = {base(c["opponent"]) for c in entry["counters"]}
+    scores = {}
+    for other in rankings:
+        other_id = base(other["speciesId"])
+        if other_id == base(entry["speciesId"]):
+            continue
+        for matchup in other["matchups"]:
+            if base(matchup["opponent"]) in counters:
+                scores[other_id] = scores.get(other_id, 0) + matchup["rating"] / 1000 * other["score"] / 100
+    best = sorted(scores, key=lambda species_id: -scores[species_id])[:partners]
+    weight = {}
+    for species_id in best:
+        for t in types.get(species_id, []):
+            weight[t] = weight.get(t, 0) + scores[species_id]
+    return [t for t, _ in sorted(weight.items(), key=lambda kv: -kv[1])[:limit]]
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--pvpoke", required=True, type=Path, help="path to a PvPoke checkout")
@@ -148,7 +177,10 @@ def main():
             item["atk"] = atk  # base Attack stat, used for charged move priority
         species_types = types.get(entry["speciesId"]) or types.get(entry["speciesId"].removesuffix("_shadow"))
         if species_types:
-            item["types"] = species_types  # used to guess the backline's types
+            item["types"] = species_types
+        back = backline_types(entry, rankings, types)
+        if back:
+            item["back"] = back  # likely types of this Pokemon's teammates, from PvPoke matchup data
         if aliases:
             item["aliases"] = aliases
         species.append(item)

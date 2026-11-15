@@ -46,6 +46,8 @@ data class Species(
     val baseAttack: Int = 0,
     /** Lower-case types, e.g. ["water", "fairy"]; empty when unknown. */
     val types: List<String> = emptyList(),
+    /** Likely types of this Pokémon's teammates, from PvPoke matchup data (best first); empty when unknown. */
+    val backlineTypes: List<String> = emptyList(),
 )
 
 /**

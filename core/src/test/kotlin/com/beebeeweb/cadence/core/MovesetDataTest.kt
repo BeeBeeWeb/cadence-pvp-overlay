@@ -20,7 +20,7 @@ class MovesetDataTest {
             "FIXTURE_60": {"name": "Fixture 60", "cost": 60}
           },
           "species": [
-            {"id": "azumarill", "name": "Azumarill", "atk": 112, "types": ["water", "fairy"],
+            {"id": "azumarill", "name": "Azumarill", "atk": 112, "types": ["water", "fairy"], "back": ["ground", "ghost"],
              "movesets": [{"fast": "BUBBLE", "charged": ["ICE_BEAM", "FIXTURE_60"]}]},
             {"id": "marowak_alolan", "name": "Alolan Marowak", "aliases": ["Marowak (Alolan)"],
              "movesets": [{"fast": "BUBBLE", "charged": ["FIXTURE_60"]}]}
@@ -35,6 +35,8 @@ class MovesetDataTest {
         assertEquals(0, species.getValue("marowak_alolan").baseAttack)
         assertEquals(listOf("water", "fairy"), species.getValue("azumarill").types)
         assertEquals(emptyList<String>(), species.getValue("marowak_alolan").types)
+        assertEquals(listOf("ground", "ghost"), species.getValue("azumarill").backlineTypes)
+        assertEquals(emptyList<String>(), species.getValue("marowak_alolan").backlineTypes)
     }
 
     @Test
