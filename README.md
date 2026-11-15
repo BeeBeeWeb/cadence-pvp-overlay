@@ -12,7 +12,7 @@ Early work. Great League first.
 
 - [x] `core`: count and turn maths, species-name matching, moveset lookup (pure Kotlin, unit-tested)
 - [x] Great League data in `data/greatleague.json` (786 species, up to 3 movesets each)
-- [ ] Android app: screen capture, overlay, opponent name reading
+- [x] Android app skeleton: screen capture, overlay panel, opponent name reading (first version, not yet tried on a device)
 - [ ] Shields and remaining-Pokémon detection
 - [ ] Matchup and backline prediction
 
@@ -35,6 +35,18 @@ Each species gets up to three movesets: PvPoke's recommended one first, then com
 used fast and charged moves. "Most used" comes from PvPoke's simulations, not from real battle logs.
 Regional forms use the in-game name ("Alolan Marowak"); other forms are also reachable by the plain
 species name when that is unambiguous.
+
+## Try the app (Android 11+)
+
+1. Open the project in Android Studio, let Gradle sync, pick the `app` configuration and your phone, press Run.
+2. In Cadence: allow "display over other apps", then tap "Start Cadence".
+3. When Android asks what to share, choose "Entire screen". Switch to the game and start a battle.
+
+The panel appears under the opponent's card once the name has been read twice in a row. It never takes
+touches, so the game stays fully usable. Stop it from the app or from the notification.
+
+If the name is not recognised, the card region in `ScreenRegions.kt` and the capture scale in
+`OverlayService.kt` (`CAPTURE_SCALE`) are the first things to tune.
 
 ## Run the tests
 
