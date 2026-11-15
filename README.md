@@ -11,7 +11,7 @@ The app only reads what is on screen; it does not touch the game's code, memory 
 Early work. Great League first.
 
 - [x] `core`: count and turn maths, species-name matching, moveset lookup (pure Kotlin, unit-tested)
-- [ ] Great League data (movesets, energy, turns)
+- [x] Great League data in `data/greatleague.json` (786 species, up to 3 movesets each)
 - [ ] Android app: screen capture, overlay, opponent name reading
 - [ ] Shields and remaining-Pokémon detection
 - [ ] Matchup and backline prediction
@@ -22,6 +22,19 @@ For each charged move: `count = ceil(energy cost / fast move energy gain)`, and
 `turns = count x fast move turns`. Counts assume the Pokémon starts at zero energy.
 
 Example: Bubble gives 11 energy over 3 turns, so Ice Beam (55 energy) takes 5 Bubbles = 15 turns.
+
+## Data
+
+`data/greatleague.json` is generated from [PvPoke](https://github.com/pvpoke/pvpoke) (MIT License, see
+`data/PVPOKE-LICENSE.txt`) by `tools/import_pvpoke.py`. To refresh it after a PvPoke update:
+
+    git clone --depth 1 https://github.com/pvpoke/pvpoke
+    python tools/import_pvpoke.py --pvpoke pvpoke --out data/greatleague.json
+
+Each species gets up to three movesets: PvPoke's recommended one first, then combinations of its most
+used fast and charged moves. "Most used" comes from PvPoke's simulations, not from real battle logs.
+Regional forms use the in-game name ("Alolan Marowak"); other forms are also reachable by the plain
+species name when that is unambiguous.
 
 ## Run the tests
 

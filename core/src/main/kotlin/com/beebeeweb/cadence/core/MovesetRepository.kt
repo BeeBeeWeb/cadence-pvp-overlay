@@ -1,14 +1,17 @@
 package com.beebeeweb.cadence.core
 
-/** Looks up species by name and returns their most likely movesets with counts. */
+/** Looks up species by name or alias and returns their most likely movesets with counts. */
 class MovesetRepository(species: List<Species>) {
 
     private val byName: Map<String, Species> = buildMap {
-        for (s in species) putIfAbsent(Names.normalize(s.name), s) // first entry wins on duplicates
+        // Real names are indexed before aliases so an alias never shadows another species' name.
+        // On duplicates the first entry wins.
+        for (s in species) putIfAbsent(Names.normalize(s.name), s)
+        for (s in species) for (alias in s.aliases) putIfAbsent(Names.normalize(alias), s)
     }
 
-    /** Display names of every known species, for [SpeciesMatcher]. */
-    val speciesNames: List<String> = species.map { it.name }
+    /** Every name and alias we can resolve, for [SpeciesMatcher]. */
+    val speciesNames: List<String> = species.flatMap { listOf(it.name) + it.aliases }
 
     fun find(name: String): Species? = byName[Names.normalize(name)]
 

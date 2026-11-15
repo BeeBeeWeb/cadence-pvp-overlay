@@ -9,8 +9,9 @@ package com.beebeeweb.cadence.core
  */
 class SpeciesMatcher(names: Collection<String>) {
 
+    // One candidate per distinct normalised name, so identical names never count as an ambiguous tie.
     private val candidates: List<Pair<String, String>> =
-        names.map { it to Names.normalize(it) }.filter { it.second.isNotEmpty() }
+        names.map { it to Names.normalize(it) }.filter { it.second.isNotEmpty() }.distinctBy { it.second }
 
     fun match(ocrText: String): String? {
         val query = Names.normalize(ocrText)

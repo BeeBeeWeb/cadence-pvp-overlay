@@ -73,4 +73,26 @@ class MovesetRepositoryTest {
         )
         assertEquals("a", duplicate.find("mrmime")?.id)
     }
+
+    @Test
+    fun `aliases resolve to their species and are offered to the matcher`() {
+        val aliased = MovesetRepository(
+            listOf(
+                Species("m", "Alolan Marowak", listOf(Moveset(BUBBLE, listOf(ICE_BEAM))), aliases = listOf("Marowak (Alolan)")),
+            ),
+        )
+        assertEquals("m", aliased.find("Marowak (Alolan)")?.id)
+        assertEquals(listOf("Alolan Marowak", "Marowak (Alolan)"), aliased.speciesNames)
+    }
+
+    @Test
+    fun `an alias never shadows another species with that name`() {
+        val repo = MovesetRepository(
+            listOf(
+                Species("a", "Giratina (Altered)", listOf(Moveset(BUBBLE, listOf(ICE_BEAM))), aliases = listOf("Giratina")),
+                Species("b", "Giratina", listOf(Moveset(BUBBLE, listOf(CHARGED_60)))),
+            ),
+        )
+        assertEquals("b", repo.find("Giratina")?.id)
+    }
 }

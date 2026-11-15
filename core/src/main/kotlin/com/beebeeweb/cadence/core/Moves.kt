@@ -33,11 +33,15 @@ data class Moveset(
     val charged: List<ChargedMove>,
 )
 
-/** A species and its movesets, ordered from most to least likely. */
+/**
+ * A species and its movesets, ordered from most to least likely.
+ * [aliases] are other names the game or data sources use for it (e.g. "Marowak (Alolan)" for "Alolan Marowak").
+ */
 data class Species(
     val id: String,
     val name: String,
     val movesets: List<Moveset>,
+    val aliases: List<String> = emptyList(),
 )
 
 /**

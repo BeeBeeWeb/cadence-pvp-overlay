@@ -56,4 +56,10 @@ class SpeciesMatcherTest {
         val ambiguous = SpeciesMatcher(listOf("Cradily", "Cradilx"))
         assertNull(ambiguous.match("Cradilz"))
     }
+
+    @Test
+    fun `identical names listed twice are not treated as ambiguous`() {
+        val duplicated = SpeciesMatcher(listOf("Gourgeist", "Gourgeist", "Combusken"))
+        assertEquals("Gourgeist", duplicated.match("Gourgeisr"))
+    }
 }
