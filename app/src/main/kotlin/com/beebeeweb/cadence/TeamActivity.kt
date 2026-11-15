@@ -1,6 +1,8 @@
 package com.beebeeweb.cadence
 
+import android.graphics.Color
 import android.os.Bundle
+import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import android.widget.AutoCompleteTextView
@@ -79,12 +81,12 @@ class TeamActivity : ComponentActivity() {
         }
         val fastLabels = catalog.fast.map { "${it.name}  (+${it.energyGain}, ${it.turns}t)" }
         val fast = Spinner(this).apply {
-            adapter = ArrayAdapter(this@TeamActivity, android.R.layout.simple_spinner_dropdown_item, fastLabels)
+            adapter = spinnerAdapter(fastLabels)
         }
         val chargedLabels = listOf("none") + catalog.charged.map { "${it.name}  (${it.energyCost})" }
         val charged = List(2) {
             Spinner(this).apply {
-                adapter = ArrayAdapter(this@TeamActivity, android.R.layout.simple_spinner_dropdown_item, chargedLabels)
+                adapter = spinnerAdapter(chargedLabels)
             }
         }
         val slot = Slot(speciesField, fast, charged)
@@ -141,6 +143,18 @@ class TeamActivity : ComponentActivity() {
         }
         TeamStore(this).save(team)
         status.text = if (problems.isEmpty()) "Saved." else "Saved, except:\n" + problems.joinToString("\n")
+    }
+
+    /** Spinner rows with an explicit dark text colour, so the selected move is always visible. */
+    private fun spinnerAdapter(labels: List<String>): ArrayAdapter<String> {
+        val dark = Color.rgb(33, 33, 33)
+        return object : ArrayAdapter<String>(this, android.R.layout.simple_spinner_dropdown_item, labels) {
+            override fun getView(position: Int, convertView: View?, parent: ViewGroup): View =
+                (super.getView(position, convertView, parent) as TextView).apply { setTextColor(dark) }
+
+            override fun getDropDownView(position: Int, convertView: View?, parent: ViewGroup): View =
+                (super.getDropDownView(position, convertView, parent) as TextView).apply { setTextColor(dark) }
+        }
     }
 
     private fun matchWidth() = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)

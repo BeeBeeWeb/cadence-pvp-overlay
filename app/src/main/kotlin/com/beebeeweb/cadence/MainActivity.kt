@@ -108,5 +108,9 @@ class MainActivity : ComponentActivity() {
     private fun button(label: String, onClick: () -> Unit) = Button(this).apply {
         text = label
         setOnClickListener { onClick() }
+        layoutParams = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+        ).apply { topMargin = (12 * resources.displayMetrics.density).toInt() }
     }
 }
