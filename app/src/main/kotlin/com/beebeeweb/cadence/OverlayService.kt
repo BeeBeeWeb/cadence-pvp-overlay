@@ -73,6 +73,11 @@ class OverlayService : Service() {
     /** Starts paused: the user taps the floating button when a battle begins. */
     @Volatile private var paused = true
 
+    // The panel is hidden while the opponent's name can't be read (e.g. during a charged-move animation),
+    // so you can see the move that was thrown.
+    private var misses = 0
+    private var nameVisible = false
+
     @Volatile private var busy = false
     private var lastFrameAt = 0L
     private var running = false
@@ -161,6 +166,8 @@ class OverlayService : Service() {
     private fun setPaused(value: Boolean) {
         if (!value) loadTeam() // pick up any change made in "Your team"
         paused = value
+        misses = 0
+        nameVisible = false
         stabilizer.reset()
         panel.hide()
         control.setPaused(value)
@@ -235,10 +242,24 @@ class OverlayService : Service() {
         if (paused) return
         val matcher = matcher ?: return
         val species = OpponentNameReader.pickSpecies(lines, matcher)
-        if (stabilizer.update(species)) render()
+        misses = if (species == null) misses + 1 else 0
+        val changed = stabilizer.update(species)
+        if (misses >= HIDE_AFTER_MISSES) {
+            nameVisible = false
+            panel.hide()
+            return
+        }
+        if (changed || !nameVisible) {
+            nameVisible = true
+            render()
+        }
     }
 
     private fun render() {
+        if (!nameVisible) {
+            panel.hide()
+            return
+        }
         val name = stabilizer.current
         val movesets = if (name != null) repository?.topMovesets(name).orEmpty() else emptyList()
         if (movesets.isEmpty()) {
@@ -297,6 +318,9 @@ class OverlayService : Service() {
         private const val CHANNEL_ID = "cadence_capture"
         private const val NOTIFICATION_ID = 1
         const val DATA_ASSET = "greatleague.json"
+
+        /** Frames in a row without a readable opponent name before the overlay hides (about 0.6 s). */
+        private const val HIDE_AFTER_MISSES = 2
 
         /** Fraction of the real screen size to capture. Lower is lighter, higher reads small text better. */
         private const val CAPTURE_SCALE = 0.75f
